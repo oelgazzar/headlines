@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template, request, redirect, url_for
 import feedparser
 
 app = Flask(__name__)
@@ -8,18 +8,24 @@ pubs = {"bbc"		: "http://feeds.bbci.co.uk/news/rss.xml",
 		"fox"		: "http://feeds.foxnews.com/foxnews/latest",
 		"iol"		: "http://rss.iol.io/iol/all-content-feed"
 		}
+		
+app.jinja_env.globals["pubs"] = pubs
 
 @app.route("/")
-@app.route("/<publication>")
-def get_news(publication="bbc"):
-	url = pubs[publication]
-	res_dict = feedparser.parse(url)
-	first_article = res_dict["entries"][0]
-	html = """<h1>{} Headings</h1>
-		<b>{title}</b>
-		<i>{published}</i>
-		<p>{summary}</p>""".format(publication.upper(), **first_article)
-	return html
-	
+def get_news():
+	query = request.args.get("publication")
+	if not query:
+		query = "bbc"
+	elif query.lower() not in pubs:
+		return redirect(url_for("get_news", publication="bbc"))
+	else:
+		query = query.lower()
+		
+	url = pubs[query]
+	entries = feedparser.parse(url)["entries"]
+	return render_template("home.html", entries=entries,
+		query=query)
+
+
 if __name__ == "__main__":
 	app.run(debug=True)
